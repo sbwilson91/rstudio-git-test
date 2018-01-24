@@ -1,0 +1,70 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Open required libraries
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(readr)
+library(dplyr)
+
+```
+
+Load the data (csv files)
+```{r}
+hom <- read_csv("rstudio-git-test/MAFB_HOM.csv")
+het <- read_csv("rstudio-git-test/MAFB_HET.csv")
+str(hom)
+het$`Sample Name` <- hom$`Sample Name`
+het$`Target Name` <- hom$`Target Name`
+
+# filter for columns of interest
+f.hom <- hom[,c("Sample Name", "Target Name", "CT", "Ct Mean")]
+f.het <- het[,c("Sample Name", "Target Name", "CT", "Ct Mean")]
+
+
+```
+
+Change in expression (DCT)
+```{r}
+f.hom$CT <-as.numeric(f.hom$CT)
+f.het$CT <- as.numeric(f.het$CT)
+
+f.hom$`Ct Mean` <-as.numeric(f.hom$`Ct Mean`)
+f.het$`Ct Mean` <- as.numeric(f.het$`Ct Mean`)
+
+write.csv(f.hom, "rstudio-git-test/f_hom.csv")
+write.csv(f.het, "rstudio-git-test/f_het.csv")
+
+f.hom <- read_csv("rstudio-git-test/f_hom.csv")
+f.het <- read_csv("rstudio-git-test/f_het.csv")
+
+
+
+```
+
+
+Removed duplications
+```{r}
+f.hom <- f.hom[duplicated(f.hom),]
+f.het <- f.het[duplicated(f.het),]
+
+write.csv(f.hom, "rstudio-git-test/f_hom.csv")
+write.csv(f.het, "rstudio-git-test/f_het.csv")
+
+f.hom <- read_csv("rstudio-git-test/f_hom.csv")
+f.het <- read_csv("rstudio-git-test/f_het.csv")
+
+ggplot(f.hom, aes(`Target Name`, `2^DCT`)) +
+  geom_col() +
+  facet_wrap(~ `Sample Name`)
+
+```
+
