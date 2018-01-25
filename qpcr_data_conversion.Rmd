@@ -1,0 +1,40 @@
+---
+title: "Converting qPCR raw data into data analysis"
+output: html_notebook
+---
+
+
+
+Exported file from the quantstudio 5 is of the following format:
+Various metrics are located in different sheets with specific names, i.e. "Results"
+The Results page contains rows of information at the start irrelevant to the data
+A row containing all the collected variables and measurements is the start of the "data matrix"
+the column names include "Well", "Well Position" etc.
+
+The goal is to write a file that can take an exported excel file, read in the data and do the analysis to produce
+measurements like Normalised expression (DCt) and Relative expression if needed (DDCt)
+
+Even if this simply imports the data and renders it usable for graphing that would be great, but if i can get
+it to graph as well that would be fantastic
+
+
+Step 1: Read the .xlsx file
+```{r}
+install.packages("here")
+library(here)
+library(readxl)
+df <- read_excel(here("rstudio-git-test/QP069.xls"), sheet = "Results",
+                 skip = 46, n_max = 96)
+
+```
+
+We only need certain rows, so will remove the others
+```{r}
+df <- df[,c("Well Position", "Sample Name", "Target Name", "CT", "Ct Mean", "Ct SD")]
+
+```
+
+
+
+
+
