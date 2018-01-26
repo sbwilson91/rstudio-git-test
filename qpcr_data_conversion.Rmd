@@ -46,6 +46,7 @@ for (i in 1:nrow(df.sum)) {
     df.sum[i,] <- NA
   } 
 }
+<<<<<<< HEAD
 
 df.sum <- df.sum[!is.na(df.sum[,1]),]
 
@@ -77,11 +78,16 @@ df.sum <- df.sum[!is.na(df.sum[,1]),]
 
 
 
+
+
+
+
 Break up into sample (in this case target as i enterred the names incorrectly at the interface)
 Calculate DDct 
 Might try to flip this around, if initial attempt doesnt work
 ```{r}
 library(dplyr)
+
 samples <- as.vector(df.sum %>% 
   group_by(`Target Name`) %>% 
   summarise(n_distinct(`Sample Name`)))$`Target Name`
@@ -160,8 +166,76 @@ for (i in 1:length(genes)) {
   
 }
 
+=======
+>>>>>>> 8f63bfbededfa866bdf54a0dc2390238d3ffd9db
+
+# iterates through the df and adds a tibble df of each sample to a list
+sum.list <- as.list(NULL)
+temp <- as.data.frame(NULL)
+for (i in 1:length(samples)) {
+  
+  for(j in 1:nrow(df.sum)) {
+    if (df.sum[j, 2] == samples[i]) {
+      temp <- rbind(temp, df.sum[j,])
+     j <- j+1
+    }
+    
+  sum.list[[samples[i]]] <- temp
+  }
+  temp <- as.data.frame(NULL)
+  i <- i+1
+}
+```
+
+Now have a list containing individual dfs seperated by Sample
+To generate DCt need : test Ct - control Ct, which leads to the normalised expression of a gene
+normalised expression (NormExp) = 2^DCt
+in this case (and almost all cases) control is GAPDH and will be the first row in the list.
+
+```{r}
+## at this point, can ask for input as to what the control gene is (drop down list of genes used)
+sum.list.dct <- sum.list
+for (i in 1:length(sum.list)) {
+
+  for (j in 1:nrow(sum.list[[i]])) {
+    
+    sum.list.dct[[i]][j,"DCT"] <- sum.list[[i]][j,3] - sum.list[[i]][sum.list[[i]][,1]=="GAPDH",3]
+    sum.list.dct[[i]][j,"NormExp"] <- 2^-(sum.list.dct[[i]][j,"DCT"])
+    print(sum.list.dct[[i]][j,"NormExp"])
+  }
+}
+```
+
+Repeat this with DDCt which is test DCT - control DCt (RelExp)
+Produce produce drop down menu OR have a variable input signifying which sample is control/relative
+
+```{r}
+
+sum.list.ddct <- lapply(sum.list.dct, function(x) x[x$`Sample Name` != "GAPDH",])
+
+for (i in 1:length(sum.list.ddct)) {
+  
+  for (j in 1:nrow(sum.list.dct[[i]])) {
+    
+    
+  }
+  
+  sum.list.ddct[[i]][,"DDCT"] <- sum.list.ddct[[i]][,"DCT"] - sum.list.ddct[[1]][,"DCT"]
+  
+  print(sum.list.ddct[[i]][,"DDCT"])
+}
+
 
 ```
+
+Attempt to combine into single data frame and then split into a list of Genes
+
+```{r}
+
+```
+
+
+
 
 
 Next is to generate the relative expression column (RelExp = testDct - controlDct)
