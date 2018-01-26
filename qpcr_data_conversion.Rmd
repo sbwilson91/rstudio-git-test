@@ -3,7 +3,14 @@ title: "Converting qPCR raw data into data analysis"
 output: html_notebook
 ---
 
+HEADING
+===================
+This file converts an exported excel file from the QS5 and manipulates it to:
+* Remove reads where technical replicates were too different
+* Remove samples where the housekeeping gene (GAPDH until I modify to make a function) is too lowly expressed
 
+What this file does
+===================
 
 Exported file from the quantstudio 5 is of the following format:
 Various metrics are located in different sheets with specific names, i.e. "Results"
@@ -17,6 +24,9 @@ measurements like Normalised expression (DCt) and Relative expression if needed 
 Even if this simply imports the data and renders it usable for graphing that would be great, but if i can get
 it to graph as well that would be fantastic
 
+
+Programming:
+===========
 
 Step 1: Read the .xlsx file
 ```{r}

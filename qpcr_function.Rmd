@@ -1,0 +1,194 @@
+---
+title: "QuantStudio5 analysis"
+output: html_notebook
+---
+
+
+Load the required libraries
+```{r}
+library(here)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+quantstudio("QP069", "rstudio-git-test/", cont.sample = "HOM 10-3")
+```
+
+
+List of required variables:
+
+name : the file name of the excel file. should be "QP---"
+dir : the directory path to the folder containing the excel file and where the ouput files will go
+sheet : the name of the sheet the raw data is on. Should be "Results".
+
+```{r}
+
+
+quantstudio <- function(name, dir, sheet = "Results", skip = 46,
+                        housekeeper = "GAPDH", cont.sample = NULL) {
+
+df <- read_excel(here(paste0(dir,name, ".xls")), sheet = sheet,
+                 skip = skip, n_max = 96)
+df <- df[,c("Well Position", "Sample Name", "Target Name", "CT", "Ct Mean", "Ct SD")]
+
+df.sum <- distinct(df[,-c(1,4)])
+
+# will remove all entries where the sd of Ct is >0.9, which is a good indication
+# that the technical replicates are not accurate
+
+for (i in 1:nrow(df.sum)) {
+  if (df.sum[i,4]>0.9) {
+    print(df.sum[i,])
+    df.sum[i,] <- NA
+  } 
+}
+df.sum <- df.sum[!is.na(df.sum[,1]),]
+write_csv(df.sum, here(paste0(dir,"file1.csv")))
+
+weird <- as.vector(NULL)
+for(i in 1:nrow(df.sum)) {
+  if (df.sum[i,1] == housekeeper & df.sum[i,3] > 22) {
+    print(df.sum[i,2])
+    weird <- c(weird, as.character(df.sum[i,2]))
+  }
+}
+for (i in 1:nrow(df.sum)) {
+  for(j in length(weird)) {
+    if (df.sum[i,2] == weird[j]){
+      print(df.sum[i,])
+      df.sum[i,] <- NA
+    }
+  } 
+
+}
+
+df.sum <- df.sum[!is.na(df.sum[,1]),]
+write_csv(df.sum, here(paste0(dir,"file2.csv")))
+
+
+samples <- as.vector(df.sum %>% 
+  group_by(`Target Name`) %>% 
+  summarise(n_distinct(`Sample Name`)))$`Target Name`
+
+
+# iterates through the df and adds a tibble df of each sample to a list
+sum.list <- as.list(NULL)
+temp <- as.data.frame(NULL)
+for (i in 1:length(samples)) {
+  
+  for(j in 1:nrow(df.sum)) {
+    if (df.sum[j, 2] == samples[i]) {
+      temp <- rbind(temp, df.sum[j,])
+     
+    }
+    
+  sum.list[[samples[i]]] <- temp
+  }
+  temp <- as.data.frame(NULL)
+  
+}
+
+# at this point, can ask for input as to what the control gene is (drop down list of genes used)
+# with the current function describe the gene in the call 
+sum.list.dct <- sum.list
+for (i in 1:length(sum.list)) {
+
+  for (j in 1:nrow(sum.list[[i]])) {
+    
+    sum.list.dct[[i]][j,"DCT"] <- sum.list[[i]][j,3] - sum.list[[i]][sum.list[[i]][,1]==housekeeper,3]
+    sum.list.dct[[i]][j,"NormExp"] <- 2^-(sum.list.dct[[i]][j,"DCT"])
+    print(sum.list.dct[[i]][j,"NormExp"])
+  }
+}
+
+# removes control (GAPDH) from dataset for further analysis
+sum.list.dct <- lapply(sum.list.dct, function(x) x[x$`Sample Name` != housekeeper,])
+
+#generates df containing all current information inc. dct
+df.dct <- as.data.frame(NULL)
+for (i in 1:length(sum.list.dct)) {
+  for (j in 1:nrow(sum.list.dct[[i]])) {
+    df.dct <- rbind(df.dct, sum.list.dct[[i]][j,])
+  }
+}
+write.csv(df.dct, here(paste0(dir,name,"DCt.csv")))
+# generates vector of genes to use for matching
+genes <- as.vector(df.dct %>% 
+  group_by(`Sample Name`) %>% 
+  summarise(n_distinct(`Target Name`)))$`Sample Name`
+
+# produces list containing dfs for each gene
+sum.list.dct <- as.list(NULL)
+temp <- as.data.frame(NULL)
+for (i in 1:length(genes)) {
+  
+  for(j in 1:nrow(df.dct)) {
+    if (df.dct[j, 1] == genes[i]) {
+      temp <- rbind(temp, df.dct[j,])
+     
+    }
+    
+  sum.list.dct[[genes[i]]] <- temp
+  }
+  temp <- as.data.frame(NULL)
+  
+}
+# iterates through the df and adds a tibble df of each sample to a list
+sum.list <- as.list(NULL)
+temp <- as.data.frame(NULL)
+for (i in 1:length(samples)) {
+  
+  for(j in 1:nrow(df.sum)) {
+    if (df.sum[j, 2] == samples[i]) {
+      temp <- rbind(temp, df.sum[j,])
+     j <- j+1
+    }
+    
+  sum.list[[samples[i]]] <- temp
+  }
+  temp <- as.data.frame(NULL)
+  i <- i+1
+}
+
+
+sum.list.ddct <- sum.list.dct
+for (i in 1:length(sum.list.dct)) {
+
+  for (j in 1:nrow(sum.list.dct[[i]])) {
+    
+    sum.list.ddct[[i]][j,"DDCT"] <- sum.list.dct[[i]][j,5] - sum.list.dct[[i]][sum.list.dct[[i]][,2]==cont.sample,5]
+    
+    sum.list.ddct[[i]][j,"RelExp"] <- 2^-(sum.list.ddct[[i]][j,"DDCT"])
+    print(sum.list.ddct[[i]][j,"RelExp"])
+  }
+}
+
+df.ddct <- as.data.frame(NULL)
+for (i in 1:length(sum.list.ddct)) {
+  for (j in 1:nrow(sum.list.ddct[[i]])) {
+    df.ddct <- rbind(df.ddct, sum.list.ddct[[i]][j,])
+  }
+}
+write.csv(df.ddct, here(paste0(dir, name, "_DDCt.csv")))
+
+
+g1 <- ggplot(df.ddct, aes(`Target Name`, RelExp, fill = `Sample Name`)) +
+  geom_col() +
+  facet_grid(`Sample Name` ~ ., scales = "free_y")
+
+
+g2 <- ggplot(df.ddct, aes(`Target Name`, NormExp, fill = `Sample Name`)) +
+  geom_col() +
+  facet_grid(`Sample Name` ~ ., scales = "free_y")
+
+jpeg(paste0(name,"_DDCt.jpg"))
+plot(g1)
+jpeg(paste0(name,"_DCt.jpg"))
+plot(g2)
+dev.off()
+}
+```
+
